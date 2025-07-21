@@ -1,4 +1,4 @@
-# Prueba DBA OlaClick
+# Reto DBA OlaClick
 
 **Autor:** Kevin Valverde Bejarano  
 **Fecha:** 20/07/2025
