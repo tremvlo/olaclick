@@ -485,31 +485,18 @@ Es clave y fundamental poder separar correctamente los entornos para evitar erro
 ### 3. ¿Cómo implementarías auditoría de acceso a datos sensibles?
 Auditar quienes acceden a información crítica y/o sencible, es esencial para cumplir con normativas como (GDPR o HIPAA), yo aplicaría los siguientes metodos recomendados:
 
-1. Registro de logs de auditoría
-   - Activar:
-     ```conf
-     log_statement = 'mod'
-     log_duration = on
-     log_connections = on
-     ```
-   - Para registrar cambios sin saturar los logs.
+1. Configuración de registro de logs de auditoría
+   - Configurar `log_statement = 'all'` o tambien podemos usar `log_statement = 'mod'` para registrar solo `INSERT`, `UPDATE`, `DELETE`.
+   - Complementar con log_duration y log_connections.
 
-2. **Extensión `pgaudit`**
-   - Registrar SELECT, DDL y accesos sensibles:
-     ```sql
-     ALTER ROLE usuario SET pgaudit.log = 'read, write';
-     ```
+2. Extensión `pgaudit`
+   - Al instalar y configurar la extensión pgaudit para un control granular de auditoría, nos permite registrar SELECT, DDL y accesos a tablas específicas.
 
-3. **Triggers de auditoría**
-   - Crear una tabla `audit_log` y usar triggers en tablas clave:
-     ```sql
-     CREATE TRIGGER log_update
-     AFTER UPDATE ON clientes
-     FOR EACH ROW EXECUTE FUNCTION audit_func();
-     ```
+3. Triggers de auditoría personalizados
+   - Para auditoría a nivel de tabla, se pueden crear AFTER INSERT/UPDATE/DELETE triggers que escriban en una tabla de auditoría (por ejemplo: audit_log).
 
-4. **Centralización y monitoreo**
-   - Enviar los logs a un sistema de análisis como:
+5. Centralización y monitoreo
+   - Al tener los logs, podemos enviarlos a un sistema de análisis centralizado como:
      - CloudWatch (AWS)
      - ELK Stack (Elasticsearch + Logstash + Kibana)
-     - Datadog
+   - Tambien podemos generar alertas paraaccesos sospechosos.
