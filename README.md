@@ -225,8 +225,8 @@ AND p.created_at >= NOW() - interval '7 days';
 
 ### Explica cómo identificarías cuellos de botella
 
-   Realizaría un análisis de plan de ejecución con (EXPLAIN ANALYZE)    
-   
+   Realizaría un análisis de plan de ejecución con (EXPLAIN ANALYZE)  
+     
    Un ejemplo real simplificado de un resultado seria:
    
    ```sql
@@ -245,7 +245,7 @@ Tiempo total → 5.3 ms
 
 ### Propón al menos 2 formas de optimizar la consulta
 
-**Solución 1:**    
+### Solución 1:
    Crear un índice compuesto para los filtros
 
    ```sql
@@ -255,7 +255,8 @@ CREATE INDEX idx_orders_status_created ON orders (status, created_at);
    ***Ventajas***
    - Permite que PostgreSQL filtre rápidamente los pedidos sent creados en los últimos 7 días sin escanear toda la tabla.
    - Se adapta perfectamente al WHERE status = 'sent' AND created_at >= NOW() - interval '7 days'.
-**Solución 2:**    
+
+### Solución 2:
    Índices adicionales para mejorar los JOIN
 
    ```sql
@@ -270,8 +271,7 @@ CREATE INDEX idx_restaurants_id ON restaurants(id);
    - Reducen la necesidad de escaneos completos en tablas grandes.
    - Fundamental en entornos multitenant y de alto volumen.
 
-
-   **Solución 3:**    
+### Solución 3:
    Evaluar particionamiento de la tabla orders (si es muy grande)
 
    ```sql
@@ -283,4 +283,16 @@ FOR VALUES FROM ('2025-07-01') TO ('2025-08-01');
    - PostgreSQL accede directamente a la partición de los últimos 7 días.
    - Reduce dramáticamente el costo de escaneo y mejora la escalabilidad.
 
-4. Justifica cómo afectaría la solución al sistema en producción
+## Tarea 3
+
+### Justifica cómo afectaría la solución al sistema en producción
+
+   Con las soluciones anteriormente indicadas el impacto en producción seria:
+   - Índices bien diseñados, mejora la reducción de tiempo de consulta de milisegundos a microsegundos.
+   - Evitar Seq Scan, mejora la eficiencia, especialmente en tablas con alta concurrencia.
+   - Mejora de JOIN con índices, reducción de CPU y RAM usada en operaciones complejas.
+   - Particionamiento (si aplica), Escalabilidad horizontal, menor carga I/O.
+
+**En conclusión**  
+- Optimizar consultas en PostgreSQL no solo mejora la velocidad, sino también la estabilidad del sistema, reduce el consumo de recursos y mejora la experiencia del usuario.
+- Un simple índice o una correcta estrategia de particionado puede ahorrar segundos por consulta, lo cual se traduce en horas ahorradas al día en sistemas con alta concurrencia.
