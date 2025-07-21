@@ -464,7 +464,7 @@ Proteger las credenciales de acceso es fundamental para evitar accesos no autori
    - Separar usuarios para lectura, escritura o administración.
    
 ### 2. ¿Cómo controlarías el acceso a los datos entre entornos (producción, staging, desarrollo)?
-Es importante y clave separar correctamente los entornos para evitar errores y fugas de información, en mi experiencia tomaría las siguientes acciones:
+Es clave y fundamental poder separar correctamente los entornos para evitar errores y fugas de información, en mi experiencia tomaría las siguientes acciones:
 
 1. Bases de datos y roles separados por entorno
    - Instancias o bases independientes por entorno.
@@ -472,20 +472,20 @@ Es importante y clave separar correctamente los entornos para evitar errores y f
 
 2. Políticas de red restrictivas
    - Configurar firewalls o grupos de seguridad que controlen qué IPs pueden acceder a cada entorno.
-   - Como ejemplo podria ser que el equipo de DevOps accede a producción o que para staging solo sea accesible desde ciertas IPs internas.
+   - Como ejemplo podria ser que para staging solo sea accesible desde ciertas IPs internas.
 
-333333333333. Datos ficticios en staging/desarrollo
-   - Nunca usar datos reales de clientes en desarrollo.
-   - Aplicar herramientas de **anonimización o generación de datos ficticios**.
+3. Datos ficticios en staging/desarrollo
+   - Nunca usar datos reales de clientes en entornos de desarrollo.
+   - Aplicar herramientas de nonimización o generación de datos ficticios.
    - Usar politicas de privacidad de datos.
 
-4. **Restricciones vía IAM (en la nube)**
-   - Por ejemplo, en AWS usar políticas que prohíban acceso de usuarios comunes a producción.
+4. Restricciones vía IAM (en la nube)
+   - Por ejemplo, en AWS usar políticas de IAM para restricción por entorno, para evitar el acceso de usuarios comunes a producción.
 
 ### 3. ¿Cómo implementarías auditoría de acceso a datos sensibles?
-Auditar accesos es esencial para cumplir con normativas (como GDPR o HIPAA) y mantener el control sobre datos críticos.
+Auditar quienes acceden a información crítica y/o sencible, es esencial para cumplir con normativas como (GDPR o HIPAA), yo aplicaría los siguientes metodos recomendados:
 
-1. **Logs de PostgreSQL**
+1. Registro de logs de auditoría
    - Activar:
      ```conf
      log_statement = 'mod'
