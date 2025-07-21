@@ -355,10 +355,160 @@ Aunque Redis es muy rápido, no siempre es la mejor solución en sistemas de alt
 - Si Redis no se actualiza al mismo tiempo que PostgreSQL, los usuarios podrían ver datos desfasados.
 - En sistemas de auditoría, legal o financiero, esto no es aceptable.
 
-**En Resumen**
+**A continuación, comparto un pequeño cuadro resumen de cuando usar y no usar Redis:**
 
 | Situación                          | ¿Redis es recomendable? | Comentario                                                 |
 |-----------------------------------|--------------------------|-------------------------------------------------------------|
 | Lecturas repetidas y costosas     | ✅ Sí                    | Ideal para acelerar consultas frecuentes                   |
 | Datos que cambian constantemente  | ⚠️ Con precaución        | Podría quedar desactualizado                               |
 | Datos críticos o financieros      | ❌ No                    | Usar solo PostgreSQL como fuente                           |
+
+---
+
+## 🧯 Parte 4: Respaldo y Recuperación
+### 1. Describe tu estrategia de backup para una base de datos de 100 GB que no puede tener más de 5 minutos de pérdida de datos (RPO).
+Si el objetivo es no perder más de 5 minutos de datos en caso de fallo (RPO: Recovery Point Objective), en base a mi experiencia usaría la siguiente estrategia:
+
+WAL Archiving + Backups periódicos + Monitoreo
+- Backups completos diarios
+  - Realizar backups físicos diarios usando pg_basebackup o snapshots de disco en RDS/AWS EBS.
+  - Programarlos en horarios de baja carga.
+    
+- Archivado de WALs (Write-Ahead Logs):
+  - Configuraría PostgreSQL para guardar y archivar los WALs (con `archive_mode = on` y `archive_command`).
+  - Esto me permite generar la recuperación punto a punto (PITR) hasta el último minuto, reproduciendo cambios desde el último backup completo.
+    
+- Incrementar frecuencia de backup para Reducir el tamaño del RPO:
+  - En lugar de esperar 24h entre backups, se pueden hacer backups incrementales o diferenciales cada hora o 6 horas.
+  - Validar que los WALs se archiven con frecuencia (cada 1–5 min).
+    
+- Si PostgreSQL lo tenemos en RDS/AWS:
+  - Configuraría automated backups + retención de snapshots.
+  - Habilitaría el point-in-time recovery (PITR) nativo.
+
+### 2. ¿Cómo configurarías una réplica de solo lectura en PostgreSQL?
+De manera on-premise realizaría lo siguiente:
+
+1. En el **servidor primario**:
+   - Configurar:
+     ```conf
+     wal_level = replica
+     max_wal_senders = 5
+     archive_mode = on
+     ```
+   - Crear usuario con permisos de `REPLICATION`.
+
+2. En el **servidor secundario**:
+   - Ejecutar `pg_basebackup`.
+   - Crear archivo `standby.signal` en el directorio `data/`.
+   - Configurar `primary_conninfo` con los datos del servidor primario.
+
+Como Resultado obtendre que la réplica funcione en **modo hot standby** (solo lectura + sincronización en tiempo real).
+
+En un SaaS por ejemplo RDS/AWS:
+- Simplemente seleccionaría "Create read replica" desde la consola de RDS y elegiría la instancia primaria.
+- AWS se encarga de la replicación, failover y sincronización automáticamente.
+
+### 3. ¿Qué herramienta o enfoque usarías para automatizar y validar los backups?
+En base a mi experiencia para automatizar recomiendo usar las siguientes herramientas:  
+
+pgBackRest
+  - Soporta backups incrementales, compresión, encriptación y PITR.
+  - Verificación automática y restore por timestamp.
+
+Barman
+  - Especializado en recuperación ante desastres y múltiples servidores.
+
+`pg_basebackup` + `cron` o `pg_dump` para entornos más simples.
+
+En un SaaS por ejemplo RDS/AWS:
+- Utiliza snapshots automáticos configurables por días/retención.
+- Soporte de recuperación point-in-time (PITR).
+
+Para validación de Backups, se debe automatizar scripts para:
+  - Verificar el tamaño y éxito de cada backup.
+  - Simulaciones de restauración con `pg_restore --list`.
+  - Notificaciones vía correo o Slack si un backup falla.
+
+En entornos productivos, también es buena práctica restaurar periódicamente en un entorno de pruebas.
+
+**A continuación, comparto un cuadro resumen con la solución en base a las 3 preguntas:**
+
+| Objetivo                        | Solución recomendada                                       |
+|----------------------------------|-------------------------------------------------------------|
+| RPO ≤ 5 minutos                  | Backups + WAL Archiving + PITR                             |
+| Replica de solo lectura          | pg_basebackup + hot standby o AWS RDS Read Replica         |
+| Automatización y validación      | pgBackRest / Barman / Cron + monitoreo y alertas           |
+
+## 🔐 Parte 5: Seguridad y Acceso
+### 1. ¿Qué prácticas aplicarías para proteger las credenciales de conexión a la base de datos?
+Proteger las credenciales es fundamental para evitar accesos no autorizados o fuga de datos. Algunas buenas prácticas son:
+
+1. **Uso de gestores de secretos o variables de entorno**
+   - Evitar credenciales en el código fuente.
+   - Usar gestores como:
+     - AWS Secrets Manager
+     - HashiCorp Vault
+     - Variables de entorno protegidas (`.env`).
+
+2. **Rotación periódica de contraseñas**
+   - Renovar contraseñas al menos cada 90 días.
+   - Automatizar este proceso si es posible.
+
+3. **Conexiones cifradas (SSL/TLS)**
+   - Asegurar que todas las conexiones usen cifrado (`ssl = on` en PostgreSQL).
+   - Especialmente crítico en entornos cloud o redes públicas.
+
+4. **Principio de menor privilegio**
+   - Cada aplicación o usuario solo debe tener los permisos estrictamente necesarios.
+   - Separar usuarios para lectura, escritura o administración.
+   
+### 2. ¿Cómo controlarías el acceso a los datos entre entornos (producción, staging, desarrollo)?
+Separar correctamente los entornos es clave para evitar errores y fugas de datos.
+
+1. **Bases y roles separados por entorno**
+   - Instancias o bases independientes por entorno.
+   - Roles distintos: `app_prod`, `app_staging`, `app_dev`.
+
+2. **Políticas de red restrictivas**
+   - Configurar firewalls o grupos de seguridad que controlen qué IPs pueden acceder a cada entorno.
+   - Ejemplo: solo DevOps accede a producción.
+
+3. **Datos anonimizados en staging/dev**
+   - Nunca usar datos reales de clientes en desarrollo.
+   - Aplicar herramientas de **anonimización o generación de datos ficticios**.
+
+4. **Restricciones vía IAM (en la nube)**
+   - Por ejemplo, en AWS usar políticas que prohíban acceso de usuarios comunes a producción.
+
+### 3. ¿Cómo implementarías auditoría de acceso a datos sensibles?
+Auditar accesos es esencial para cumplir con normativas (como GDPR o HIPAA) y mantener el control sobre datos críticos.
+
+1. **Logs de PostgreSQL**
+   - Activar:
+     ```conf
+     log_statement = 'mod'
+     log_duration = on
+     log_connections = on
+     ```
+   - Para registrar cambios sin saturar los logs.
+
+2. **Extensión `pgaudit`**
+   - Registrar SELECT, DDL y accesos sensibles:
+     ```sql
+     ALTER ROLE usuario SET pgaudit.log = 'read, write';
+     ```
+
+3. **Triggers de auditoría**
+   - Crear una tabla `audit_log` y usar triggers en tablas clave:
+     ```sql
+     CREATE TRIGGER log_update
+     AFTER UPDATE ON clientes
+     FOR EACH ROW EXECUTE FUNCTION audit_func();
+     ```
+
+4. **Centralización y monitoreo**
+   - Enviar los logs a un sistema de análisis como:
+     - CloudWatch (AWS)
+     - ELK Stack (Elasticsearch + Logstash + Kibana)
+     - Datadog
