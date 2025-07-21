@@ -17,10 +17,10 @@ Diseñar un modelo de datos relacional en PostgreSQL para soportar:
 
 **Entregables de Parte 1: Modelado de Datos**  
 
-### A continuación, se comparte el Script SQL para la Creación de Tablas e Índices
+***A continuación, se comparte el Script SQL para la Creación de Tablas e Índices***
 
 ```sql
--- ENUMs
+-- ENUMs (tipo de datos)
 CREATE TYPE order_status AS ENUM ('initiated', 'sent', 'delivered');
 CREATE TYPE user_status AS ENUM ('A', 'I', 'B'); -- A: Activo, I: Inactivo, B: Bloqueado
 
@@ -112,19 +112,24 @@ CREATE TABLE order_status_history (
     created_by_user_id INTEGER REFERENCES users(id)
 );
 
--- Índices adicionales
+-- Índices
+-- Índices en tabla users
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_restaurant ON users(restaurant_id, status);
 
+--Índices en tabla clients
 CREATE INDEX idx_clients_name ON clients(restaurant_id, name);
 CREATE INDEX idx_clients_phone ON clients(restaurant_id, phone);
 CREATE INDEX idx_clients_restaurant_email ON clients(restaurant_id, email);
 
+-- Índices en tabla products
 CREATE INDEX idx_products_name ON products(restaurant_id, name);
 
+-- Índices en tabla branches
 CREATE INDEX idx_branches_name ON branches(restaurant_id, name);
 
+-- Índices en tabla orders
 CREATE INDEX idx_orders_restaurant_status_created ON orders(restaurant_id, status, created_at);
 CREATE INDEX idx_orders_created_at ON orders(restaurant_id, created_at);
 CREATE INDEX idx_orders_client_date ON orders(client_id, created_at);
@@ -132,7 +137,9 @@ CREATE INDEX idx_orders_restaurant_client ON orders(restaurant_id, client_id);
 CREATE INDEX idx_orders_restaurant_branch ON orders(restaurant_id, branch_id);
 CREATE INDEX idx_orders_branch ON orders(branch_id);
 
+-- Índices en order_status_history
 CREATE INDEX idx_order_status_history_order ON order_status_history(order_id);
 CREATE INDEX idx_order_status_changed_at ON order_status_history(changed_at);
 
+-- Índices en order_details
 CREATE INDEX idx_order_details_product ON order_details(product_id);
