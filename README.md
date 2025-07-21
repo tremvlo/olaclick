@@ -299,7 +299,66 @@ FOR VALUES FROM ('2025-07-01') TO ('2025-08-01');
 
 ---
 
-### 🧪 Parte 3: Redis
-1. ¿Cómo usarías Redis para mejorar el rendimiento del sistema en lectura de órdenes por estado?
-2. ¿Qué estrategias usarías para evitar inconsistencias entre Redis y PostgreSQL?
-3. ¿Cuándo preferirías evitar usar Redis en un sistema de alta concurrencia?
+## 🧪 Parte 3: Redis
+
+### 1. ¿Cómo usarías Redis para mejorar el rendimiento del sistema en lectura de órdenes por estado?
+Redis es una base de datos en memoria extremadamente rápida, ideal para mejorar el rendimiento en consultas de lectura intensiva.
+
+**Estrategia:**
+Utilizar Redis como capa de **caché** para almacenar resultados frecuentes de consultas, por ejemplo:
+
+- Pedidos por estado (`sent`, `delivered`, etc.)
+- Conteo de pedidos por día o por estado
+- Últimos pedidos realizados
+
+**Ejemplo:**
+```plaintext
+Clave:  orders:status:sent
+Valor:  JSON con los IDs o detalles resumidos de los pedidos
+TTL:    60 segundos (Time To Live, para evitar desactualización)
+   ```
+Se puede establecer un `TTL` (Time To Live) de 30 a 60 segundos para asegurar la actualización automática de la caché, esto permite que, si un cliente o dashboard consulta constantemente los pedidos enviados, la información se entregue desde Redis en milisegundos, sin tocar PostgreSQL.
+
+### 2. ¿Qué estrategias usarías para evitar inconsistencias entre Redis y PostgreSQL?
+
+Redis no reemplaza a PostgreSQL como fuente de verdad, por eso se deben tomar medidas para evitar inconsistencias:
+
+**Estrategias recomendadas:**
+
+1. Cache-aside (lazy loading):
+   - Consultar Redis primero.
+   - Si no hay datos, leer desde PostgreSQL y almacenar en Redis.
+   - Invalida o actualiza Redis manualmente después de cada escritura.
+
+2. TTL corto:
+   - Establecer expiración automática de los datos para garantizar frescura sin intervención manual.
+
+3. Eventos de invalidación:
+   - Emitir eventos (pub/sub, webhooks o triggers) que actualicen o eliminen caché cuando cambia el estado del pedido.
+
+4. Marcas de tiempo en la caché:
+   - Incluir `last_updated_at` para validar que la información aún sea válida antes de usarla.
+
+### 3. ¿Cuándo preferirías evitar usar Redis en un sistema de alta concurrencia?
+Aunque Redis es muy rápido, no siempre es la mejor solución en sistemas de alta concurrencia. Algunos escenarios en los que preferiría evitarlo o tener cuidado seria en:
+
+❌ Sistemas con alta tasa de cambio: (Cuando los datos cambian constantemente)
+- Si los pedidos cambian de estado constantemente (por ejemplo: cada segundo), Redis puede quedar obsoleto más rápido de lo que puede actualizarse y puede estar propenso a errores.
+- Mantener la caché sincronizada entre PostgreSQL y Redis se vuelve costoso.
+
+❌ Lógica crítica o financiera: (Cuando la lógica de negocio es crítica)
+- No es recomendable confiar en Redis para operaciones que requieren consistencia fuerte.
+- Como ejemplo: No usar Redis como fuente para pagos, saldos o stock, inventarios o auditoría. Puede mostrar información desactualizada y/o valores incorrectos.
+
+❌ Casos donde la consistencia es más importante que el rendimiento: (Cuando la latencia de sincronización importa mucho)
+- Redis es ideal para **rendimiento**, pero no para **consistencia estricta**.
+- Si Redis no se actualiza al mismo tiempo que PostgreSQL, los usuarios podrían ver datos desfasados.
+- En sistemas de auditoría, legal o financiero, esto no es aceptable.
+
+**En Resumen**
+
+| Situación                          | ¿Redis es recomendable? | Comentario                                                 |
+|-----------------------------------|--------------------------|-------------------------------------------------------------|
+| Lecturas repetidas y costosas     | ✅ Sí                    | Ideal para acelerar consultas frecuentes                   |
+| Datos que cambian constantemente  | ⚠️ Con precaución        | Podría quedar desactualizado                               |
+| Datos críticos o financieros      | ❌ No                    | Usar solo PostgreSQL como fuente                           |
