@@ -296,3 +296,10 @@ FOR VALUES FROM ('2025-07-01') TO ('2025-08-01');
 **En conclusión**  
 - Optimizar consultas en PostgreSQL no solo mejora la velocidad, sino también la estabilidad del sistema, reduce el consumo de recursos y mejora la experiencia del usuario.
 - Un simple índice o una correcta estrategia de particionado puede ahorrar segundos por consulta, lo cual se traduce en horas ahorradas al día en sistemas con alta concurrencia.
+
+---
+
+### 🧪 Parte 3: Redis
+1. ¿Cómo usarías Redis para mejorar el rendimiento del sistema en lectura de órdenes por estado?
+2. ¿Qué estrategias usarías para evitar inconsistencias entre Redis y PostgreSQL?
+3. ¿Cuándo preferirías evitar usar Redis en un sistema de alta concurrencia?
