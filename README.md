@@ -442,41 +442,42 @@ En entornos productivos, también es buena práctica restaurar periódicamente e
 
 ## 🔐 Parte 5: Seguridad y Acceso
 ### 1. ¿Qué prácticas aplicarías para proteger las credenciales de conexión a la base de datos?
-Proteger las credenciales es fundamental para evitar accesos no autorizados o fuga de datos. Algunas buenas prácticas son:
+Proteger las credenciales de acceso es fundamental para evitar accesos no autorizados o fuga de información, algunas buenas prácticas son:
 
-1. **Uso de gestores de secretos o variables de entorno**
-   - Evitar credenciales en el código fuente.
+1. Uso de gestores de secretos o variables de entorno
+   - Nunca guardar credenciales en el código fuente.
+   - En entornos on-premise, utilizar variables de entorno seguras (.env con protección de lectura).
    - Usar gestores como:
      - AWS Secrets Manager
      - HashiCorp Vault
-     - Variables de entorno protegidas (`.env`).
 
-2. **Rotación periódica de contraseñas**
-   - Renovar contraseñas al menos cada 90 días.
-   - Automatizar este proceso si es posible.
+2. Cambio de contraseñas periodicamente
+   - Establecer políticas para que las contraseñas se renueven cada cierto tiempo (por ejemplo, cada 90 días).
+   - Automatizar este proceso si es posible y más aun en sistemas cloud.
 
-3. **Conexiones cifradas (SSL/TLS)**
+3. Conexiones cifradas (SSL/TLS)
    - Asegurar que todas las conexiones usen cifrado (`ssl = on` en PostgreSQL).
    - Especialmente crítico en entornos cloud o redes públicas.
 
-4. **Principio de menor privilegio**
+4. Principio de menor privilegio
    - Cada aplicación o usuario solo debe tener los permisos estrictamente necesarios.
    - Separar usuarios para lectura, escritura o administración.
    
 ### 2. ¿Cómo controlarías el acceso a los datos entre entornos (producción, staging, desarrollo)?
-Separar correctamente los entornos es clave para evitar errores y fugas de datos.
+Es importante y clave separar correctamente los entornos para evitar errores y fugas de información, en mi experiencia tomaría las siguientes acciones:
 
-1. **Bases y roles separados por entorno**
+1. Bases de datos y roles separados por entorno
    - Instancias o bases independientes por entorno.
    - Roles distintos: `app_prod`, `app_staging`, `app_dev`.
 
-2. **Políticas de red restrictivas**
+2. Políticas de red restrictivas
    - Configurar firewalls o grupos de seguridad que controlen qué IPs pueden acceder a cada entorno.
-   - Ejemplo: solo DevOps accede a producción.
+   - Como ejemplo podria ser que el equipo de DevOps accede a producción o que para staging solo sea accesible desde ciertas IPs internas.
 
-3. **Datos anonimizados en staging/dev**
+333333333333. Datos ficticios en staging/desarrollo
    - Nunca usar datos reales de clientes en desarrollo.
    - Aplicar herramientas de **anonimización o generación de datos ficticios**.
+   - Usar politicas de privacidad de datos.
 
 4. **Restricciones vía IAM (en la nube)**
    - Por ejemplo, en AWS usar políticas que prohíban acceso de usuarios comunes a producción.
