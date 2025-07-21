@@ -1,7 +1,7 @@
-# Informe Completo de Base de Datos PostgreSQL y AWS
+# Prueba DBA OlaClick
 
-**Autor:** Kevin Valverde  
-**Fecha:** ____________
+**Autor:** Kevin Valverde Bejarano  
+**Fecha:** 20/07/2025
 
 ---
 
@@ -13,9 +13,11 @@ Diseñar un modelo de datos relacional en PostgreSQL para soportar:
 - Clientes que realizan pedidos  
 - Pedidos que contienen uno o más productos  
 - Estado de cada pedido (`initiated`, `sent`, `delivered`)  
-- Registro de cambios de estado (con timestamp)  
+- Registro de cambios de estado (con timestamp)
 
-### Script SQL de Creación de Tablas e Índices
+**Entregables de Parte 1: Modelado de Datos**  
+
+### A continuación, se comparte el Script SQL para la Creación de Tablas e Índices
 
 ```sql
 -- ENUMs
