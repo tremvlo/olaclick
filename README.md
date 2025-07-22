@@ -439,7 +439,7 @@ FOR VALUES FROM ('2025-07-01') TO ('2025-08-01');
 ### Justifica cómo afectaría la solución al sistema en producción
 
    Con las soluciones anteriormente indicadas el impacto en producción seria:
-   - Índices bien diseñados, mejora la reducción de tiempo de consulta de milisegundos a microsegundos.
+   - Índices bien diseñados, mejora la reducción de tiempo de consulta de segundos a milisegundos.
    - Evitar Seq Scan, mejora la eficiencia, especialmente en tablas con alta concurrencia.
    - Mejora de JOIN con índices, reducción de CPU y RAM usada en operaciones complejas.
    - Particionamiento (si aplica), Escalabilidad horizontal, menor carga I/O.
@@ -456,7 +456,7 @@ FOR VALUES FROM ('2025-07-01') TO ('2025-08-01');
 Redis es una base de datos en memoria extremadamente rápida, ideal para mejorar el rendimiento en consultas de lectura intensiva.
 
 **Estrategia:**
-Utilizar Redis como capa de **caché** para almacenar resultados frecuentes de consultas, por ejemplo:
+Utilizaría Redis como capa de **caché** para almacenar resultados frecuentes de consultas, por ejemplo:
 
 - Pedidos por estado (`sent`, `delivered`, etc.)
 - Conteo de pedidos por día o por estado
