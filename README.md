@@ -21,6 +21,8 @@ Diseña un modelo de datos relacional en PostgreSQL para soportar:
 
 ### **Entregable 1**  
 
+**🎥 [Clic aquí para ver el video de Cración de BD](https://doem2yl3c8x6l.cloudfront.net/reto/Reto-Olaclick.mp4)**
+
 ***A continuación, se comparte el Script SQL para la Creación de Tablas e Índices***
 
 ```sql
@@ -148,6 +150,155 @@ CREATE INDEX idx_order_status_changed_at ON order_status_history(changed_at);
 -- Índices en order_details
 CREATE INDEX idx_order_details_product ON order_details(product_id);
 ```
+***Adicional comparto el Script para insertar información en las tablas***
+
+```sql
+-- Insertar 50 restaurantes
+INSERT INTO restaurants (name, created_at)
+SELECT 'Restaurant ' || i,
+       NOW() - (random() * interval '30 days')
+FROM generate_series(1,50) i;
+
+-- Insertar 50 usuarios por restaurante
+INSERT INTO users (restaurant_id, username, full_name, role, email, password_hash, status, created_at)
+SELECT r.id,
+       'user_' || r.id || '_' || i,
+       'User ' || i || ' R' || r.id,
+       CASE WHEN i % 10 = 0 THEN 'admin' ELSE 'staff' END,
+       'user' || i || '_r' || r.id || '@mail.com',
+       md5(random()::text),
+       (
+         CASE 
+           WHEN random() < 0.8 THEN 'A'
+           WHEN random() < 0.9 THEN 'I'
+           ELSE 'B'
+         END
+       )::user_status,
+       NOW() - (random() * interval '30 days')
+FROM restaurants r,
+     generate_series(1,50) i;
+
+-- Insertar 10 sucursales por restaurante
+INSERT INTO branches (restaurant_id, name, address, created_at)
+SELECT r.id,
+       'Sucursal ' || i || ' R' || r.id,
+       'Avenida Principal #' || (100 + i),
+       NOW() - (random() * interval '30 days')
+FROM restaurants r,
+     generate_series(1,10) i;
+
+-- Insertar 200 clientes por restaurante
+INSERT INTO clients (restaurant_id, name, email, phone, created_at)
+SELECT r.id,
+       'Cliente ' || i || ' R' || r.id,
+       'cliente' || i || '_r' || r.id || '@mail.com',
+       '9' || trunc(random() * 100000000)::text,
+       NOW() - (random() * interval '30 days')
+FROM restaurants r,
+     generate_series(1,200) i;
+
+-- Insertar 100 productos por restaurante
+INSERT INTO products (restaurant_id, name, description, price, created_at)
+SELECT r.id,
+       'Producto ' || i || ' R' || r.id,
+       'Descripción del producto ' || i,
+       ROUND((random()*90 + 10)::numeric, 2),   -- ✅ CAST A NUMERIC ANTES DE ROUND
+       NOW() - (random() * interval '30 days')
+FROM restaurants r,
+     generate_series(1,100) i;
+
+-- Insertar 10 000 pedidos con fecha aleatoria
+WITH all_clients AS (
+    SELECT c.id AS client_id, 
+           c.restaurant_id, 
+           (SELECT b.id FROM branches b WHERE b.restaurant_id = c.restaurant_id ORDER BY random() LIMIT 1) AS branch_id
+    FROM clients c
+)
+INSERT INTO orders (restaurant_id, client_id, branch_id, total, status, created_at)
+SELECT ac.restaurant_id,
+       ac.client_id,
+       ac.branch_id,
+       0, -- se actualiza luego
+       'initiated',
+       -- 40% de pedidos estarán en los últimos 7 días, el resto en últimos 30
+       CASE WHEN random() < 0.4 
+            THEN NOW() - (random() * interval '7 days')
+            ELSE NOW() - (random() * interval '30 days')
+       END
+FROM all_clients ac
+ORDER BY random()
+LIMIT 10000;
+
+-- Insertar detalles a cada pedido (1 a 5 productos aleatorios)
+DO $$
+DECLARE
+    o RECORD;
+    prod RECORD;
+    num_items INT;
+    total_order NUMERIC(10,2);
+BEGIN
+    FOR o IN SELECT id, restaurant_id FROM orders LOOP
+        total_order := 0;
+        num_items := 1 + floor(random() * 5);
+        FOR prod IN
+            SELECT id, price FROM products p
+            WHERE p.restaurant_id = o.restaurant_id
+            ORDER BY random()
+            LIMIT num_items
+        LOOP
+            INSERT INTO order_details (order_id, product_id, quantity, price, created_by_user_id)
+            VALUES (
+                o.id, 
+                prod.id, 
+                (1 + floor(random() * 3))::int, 
+                prod.price,
+                NULL
+            );
+            total_order := total_order + prod.price;
+        END LOOP;
+        UPDATE orders SET total = total_order WHERE id = o.id;
+    END LOOP;
+END $$;
+
+-- Crear historial de estados para cada pedido con lógica temporal
+DO $$
+DECLARE
+    o RECORD;
+BEGIN
+    FOR o IN SELECT id, created_at FROM orders LOOP
+        -- siempre tiene initiated
+        INSERT INTO order_status_history (order_id, status, changed_at)
+        VALUES (o.id, 'initiated', o.created_at);
+
+        -- 60% avanzan a sent en promedio 1-3 días después
+        IF random() < 0.6 THEN
+            INSERT INTO order_status_history (order_id, status, changed_at)
+            VALUES (
+                o.id, 
+                'sent',
+                o.created_at + (random() * interval '3 days')
+            );
+            UPDATE orders 
+              SET status = 'sent' 
+              WHERE id = o.id;
+
+            -- 30% de esos se entregan después de 1-5 días
+            IF random() < 0.5 THEN
+                INSERT INTO order_status_history (order_id, status, changed_at)
+                VALUES (
+                    o.id, 
+                    'delivered',
+                    o.created_at + (3 + random() * 5) * interval '1 day'
+                );
+                UPDATE orders 
+                  SET status = 'delivered' 
+                  WHERE id = o.id;
+            END IF;
+        END IF;
+    END LOOP;
+END $$;
+```
+
 ### **Entregable 2**
 
 ***justificación de modelado***
